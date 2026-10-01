@@ -7,11 +7,18 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
+  <header class="brand"><span class="brand-mark" aria-hidden="true">S</span><strong>SEO Helper</strong></header>
   <main>
-    <h1>SEO Helper</h1>
-    <p>选择平台下的功能开始使用。</p>
+    <h1>工具箱</h1>
+    <p class="intro">按平台选择工具，开始今天的研究。</p>
+    <label class="search"><span class="search-icon" aria-hidden="true"></span><input id="search" type="search" aria-label="搜索平台或功能" placeholder="搜索平台或功能" autocomplete="off"></label>
+    <div class="category"><span>全部平台</span></div>
+    <div class="section-heading"><h2>已接入平台</h2><span id="platform-count" role="status"></span></div>
     <nav id="platforms" aria-label="平台与功能"></nav>
+    <p id="no-results" hidden>没有匹配的工具，试试其他关键词。</p>
+    <aside class="coming"><span class="grid-icon" aria-hidden="true">▦</span><div><h2>更多平台，陆续接入</h2><p>新工具将在这里按平台展示。</p></div></aside>
   </main>
+  <footer><span>SEO Helper</span><span>本地工具 · <span id="version"></span></span></footer>
   <script type="module" src="sidepanel.js"></script>
 </body>
 </html>
