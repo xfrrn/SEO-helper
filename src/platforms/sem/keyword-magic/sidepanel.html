@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEO Helper · 词根研究</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header><div><strong>SEO Helper</strong><span class="muted"> / SEM</span></div><button id="feature-home" type="button">全部功能</button></header>
+  <main>
+    <h1>词根研究</h1>
+    <p class="intro">保留筛选，换一个词根继续看。</p>
+    <form id="config-form">
+      <fieldset id="config-fields">
+        <label for="filter-template" class="template-label">筛选模板</label>
+        <div class="template-controls">
+          <select id="filter-template"><option value="">当前筛选（未保存模板）</option></select>
+          <button id="delete-template" type="button" disabled>删除</button>
+        </div>
+        <details id="filter-settings" class="settings">
+          <summary>编辑 / 保存筛选 <span id="database" class="muted"></span></summary>
+          <label for="template-url">在 SEM 设置好筛选后，复制完整链接</label>
+          <textarea id="template-url" rows="3" spellcheck="false" required></textarea>
+          <button id="use-current" type="button">读取当前页面链接</button>
+          <label for="template-name">模板名称</label>
+          <div class="template-controls">
+            <input id="template-name" type="text" maxlength="60" placeholder="例如：美国 · 高搜索量低难度" autocomplete="off">
+            <button id="save-template" type="button">保存模板</button>
+          </div>
+          <label for="settle-seconds">页面加载后至少等待（秒）</label>
+          <input id="settle-seconds" type="number" min="2" max="30" value="3" required>
+        </details>
+        <p id="filter-description" class="filter-description"></p>
+        <div class="label-row root-heading"><h2 id="roots-heading">待研究词根</h2><span id="root-count" class="muted">0 批</span></div>
+        <details id="root-library" class="root-editor">
+          <summary>从词根库选择 <span id="library-count" class="muted"></span></summary>
+          <label for="library-search" class="hint">搜索词根、含义或常见搭配</label>
+          <input id="library-search" type="search" placeholder="例如：Translator、翻译器" autocomplete="off">
+          <div class="library-actions">
+            <button id="library-select-all" type="button">全选结果</button>
+            <button id="library-clear-selection" type="button">取消选择</button>
+            <span id="library-selection-count" class="hint" aria-live="polite">已选 0 个</span>
+          </div>
+          <ul id="library-list" class="library-list" aria-label="可选词根"></ul>
+          <p id="library-empty" class="hint" hidden>没有匹配的词根，可在下方添加。</p>
+          <button id="library-import" type="button" class="wide primary" disabled>加入待研究（0）</button>
+          <p class="hint">每 5 个词根一批，自动跳过已添加的词根。</p>
+          <label for="library-add-input">添加自己的词根</label>
+          <div class="template-controls">
+            <input id="library-add-input" type="text" placeholder="Summarizer, AI writer" autocomplete="off" spellcheck="false">
+            <button id="library-add" type="button">添加</button>
+          </div>
+        </details>
+        <details id="root-editor" class="root-editor">
+          <summary>批量粘贴 / 编辑词根</summary>
+          <label for="roots" class="hint">每行一批，行内用逗号分隔词根；支持 ai writer 等完整词组。</label>
+          <textarea id="roots" rows="5" placeholder="checker, calculator, converter&#10;translator, ai writer" spellcheck="false"></textarea>
+          <button id="apply-roots" type="button">完成编辑</button>
+        </details>
+        <div class="range-navigation">
+          <button id="range-previous" type="button">上一批</button>
+          <span id="range-description" aria-live="polite">尚未选择</span>
+          <button id="range-next" type="button">下一批</button>
+        </div>
+        <button id="open-selected" class="wide primary" type="button">打开所选结果</button>
+        <ol id="root-list" class="root-list" aria-labelledby="roots-heading" tabindex="-1"></ol>
+        <p id="root-list-empty" class="hint" hidden>展开“批量粘贴 / 编辑词根”，每行输入一批。</p>
+      </fieldset>
+    </form>
+    <section aria-labelledby="results-heading">
+      <div class="section-heading"><h2 id="results-heading">本批词根结果</h2><span id="progress" class="muted">0 / 0 已导出</span></div>
+      <div id="results"></div>
+      <p id="empty">添加词根后，在这里逐个查看筛选结果。</p>
+    </section>
+  </main>
+  <footer>
+    <details id="export-settings">
+    <summary>导出设置 <span id="export-settings-summary" class="muted"></span></summary>
+    <label for="export-format">网站导出格式</label>
+    <select id="export-format"><option>CSV</option><option>XLSX</option><option>CSV Semicolon</option></select>
+    <label for="export-folder" class="folder-label">导出子文件夹</label>
+    <input id="export-folder" type="text" placeholder="SEO-Helper/项目A（留空使用下载目录）" aria-describedby="folder-help" spellcheck="false" autocomplete="off">
+    <p id="folder-help" class="hint">位于浏览器下载目录内，自动创建。需要保存到 D:\SEO 等位置，可更改浏览器下载位置；也可开启每次询问。</p>
+    <button id="download-settings" type="button" class="settings-link">更改下载位置</button>
+    </details>
+    <div class="actions export-actions"><button id="export-current">原生导出当前页</button><button id="export-batch" class="primary">导出本批词根</button></div>
+    <p id="export-scope" class="hint" role="status" aria-live="polite">每行一批，选择一行开始。</p>
+  </footer>
+  <script src="sidepanel.js" type="module"></script>
+</body>
+</html>

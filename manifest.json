@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "SEO Helper",
+  "description": "按平台组织的 SEO 网页工具，支持 SEM 词根研究、筛选模板与批量原生导出。",
+  "version": "0.8.1",
+  "minimum_chrome_version": "116",
+  "permissions": ["sidePanel", "storage", "activeTab", "scripting"],
+  "optional_permissions": ["downloads"],
+  "optional_host_permissions": ["https://sem.3ue.co/*"],
+  "action": { "default_title": "打开 SEO Helper" },
+  "background": { "service_worker": "src/app/background.js", "type": "module" },
+  "side_panel": { "default_path": "src/app/sidepanel.html" }
+}
