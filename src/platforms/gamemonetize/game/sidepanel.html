@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEO Helper · GameMonetize 游戏采集</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="brand"><strong>GameMonetize</strong><button id="feature-home" type="button">全部功能</button></header>
+  <main>
+    <h1>游戏采集</h1>
+    <p class="intro">读取游戏的完整 XML 和手机支持状态。</p>
+    <div class="mode-switch" role="group" aria-label="采集方式">
+      <button id="mode-current" type="button" aria-pressed="true">当前页面</button>
+      <button id="mode-batch" type="button" aria-pressed="false">批量链接</button>
+    </div>
+    <section id="current-panel" aria-labelledby="mode-current">
+      <button id="collect" class="primary" type="button" disabled>采集当前游戏</button>
+      <p id="empty" class="hint">打开 GameMonetize 的游戏详情页，再点击上方按钮。</p>
+      <section id="result" aria-labelledby="game-title" hidden>
+        <h2 id="game-title"></h2>
+        <dl>
+          <dt>游戏 ID</dt><dd id="game-id"></dd>
+          <dt>手机支持</dt><dd id="mobile-ready"></dd>
+          <dt>采集时间</dt><dd id="captured-at"></dd>
+        </dl>
+        <a id="source" target="_blank" rel="noopener noreferrer">查看游戏来源页</a>
+        <p class="hint mobile-note">手机支持读取网站的 Mobile Ready 标记；未标注时显示“未标注”。</p>
+        <label for="xml">完整 XML</label>
+        <textarea id="xml" rows="14" readonly spellcheck="false" wrap="off"></textarea>
+        <div class="result-actions">
+          <button id="copy-all" type="button">复制全部信息</button>
+          <button id="copy-xml" type="button">复制 XML</button>
+          <button id="download-xml" type="button">下载 XML</button>
+        </div>
+        <p class="hint">全部信息以 JSON 复制，包含手机支持状态和原始 XML。</p>
+      </section>
+    </section>
+    <section id="batch-panel" aria-labelledby="mode-batch" hidden>
+      <div class="batch-input-heading">
+        <label for="batch-urls">游戏详情页链接</label>
+        <button id="batch-add-current" type="button" disabled>添加当前网页链接</button>
+      </div>
+      <textarea id="batch-urls" rows="6" maxlength="65536" spellcheck="false" placeholder="https://gamemonetize.com/pro-football-eleven-2027-game&#10;每行一个游戏链接"></textarea>
+      <p id="batch-url-count" class="hint" role="status" aria-live="polite">不重复链接：0 个</p>
+      <p class="hint">每批最多 200 个链接，粘贴或添加当前页时自动去重。逐个采集，可停止后继续未完成项。</p>
+      <div class="result-actions">
+        <button id="batch-start" class="primary" type="button" disabled>开始批量采集</button>
+        <button id="batch-stop" type="button" hidden>停止采集</button>
+        <button id="batch-download" type="button" disabled>下载 ZIP</button>
+      </div>
+      <p class="hint">ZIP 包含每个成功游戏的原始 XML，以及记录手机支持状态、来源和失败原因的 manifest.json。</p>
+      <p id="batch-progress" role="status" aria-live="polite">尚未开始批量采集。</p>
+      <p id="batch-input-note" class="hint" hidden>链接已修改，下方为上次批次结果。开始新批次后会替换这些记录。</p>
+      <ol id="batch-results" aria-label="批量采集结果"></ol>
+    </section>
+  </main>
+  <footer><p id="status" role="status" aria-live="polite">正在读取上次采集…</p></footer>
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

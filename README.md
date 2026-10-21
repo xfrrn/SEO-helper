@@ -1,6 +1,30 @@
 # SEO Helper
 
-Chrome / Edge 侧边栏插件，按平台组织不同网页功能。目前支持 `sem.3ue.co` 的关键词魔法工具；打开侧栏后，在 SEM 下选择「词根研究」。功能页顶部「全部功能」返回入口，任务运行或保存期间禁用切换。
+Chrome / Edge 侧边栏插件，按平台组织不同网页功能。目前支持 SEM 词根研究，以及 GameMonetize 单页与批量游戏采集。功能页顶部「全部功能」返回入口，任务运行或保存期间禁用切换。
+
+## GameMonetize 游戏采集（v0.12.1）
+
+1. 在扩展管理页刷新 SEO Helper，关闭并重新打开侧栏，在首页选择 **GameMonetize · 游戏采集**。
+2. 选择「当前页面」，浏览器切换到 `https://gamemonetize.com/` 下的游戏详情页，点击「采集当前游戏」。首次操作申请此域名的访问权限。
+3. 侧栏显示游戏标题、ID、手机支持状态、采集时间及完整 XML。`Mobile Ready : Yes` 显示「支持（Yes）」、`No` 显示「不支持（No）」；缺少标记显示「未标注」，未知标记会报错。这是网站声明，未执行手机实机兼容测试。
+4. 「复制全部信息」复制 JSON，包含 `gameId`、`title`、`pageUrl`、`mobileReady`（`true` / `false` / `null`）、`xml`、`capturedAt`；「复制 XML」单独复制原始 XML；「下载 XML」保存为 `gamemonetize-游戏ID.xml`，手机支持状态不写入网站原始 XML。
+
+批量采集与植入资料包：
+
+1. 选择「批量链接」，每行粘贴一个 `https://gamemonetize.com/` 游戏详情页链接，点击「开始批量采集」。输入框下实时显示不重复的有效链接数量，同时显示重复和无效行数。粘贴、拖入文本、离开输入框及开始采集时自动整理重复项；手动输入过程中保留原文和光标。最多 200 个不同链接，忽略空行和链接的 `#` 片段，按输入顺序去重，保留查询参数；无效行原文保留供修正，不会被静默丢弃。
+2. 插件按顺序请求页面 HTML，再读取该游戏的 XML，复用单页采集的标记解析和 RSS / ID 校验。无需预先打开这些网页，也不创建研究标签页；网页脚本不执行。每项显示成功、失败原因和手机支持状态，某项失败后继续后续链接。
+3. 「停止采集」取消当前请求，保留已完成项；链接列表未变时可「继续未完成项」，已成功和已失败的项不重复采集。完成后的「重新采集全部」或更改链接列表后开始新批次，会替换插件中的本批结果。每项完成后保存进度；切换模式或返回全部功能时也保存输入。重开恢复记录但不自动发起请求。
+4. 至少成功一个游戏后可「下载 ZIP」。下载包包含 `xml/序号-游戏ID.xml`（逐份保留网站 XML 原文）和 `manifest.json`。清单记录导出时间、总数、成功 / 失败 / 未完成数量，以及各输入链接的 `status`；成功项包含 `gameId`、`title`、最终 `pageUrl`、`mobileReady`、`capturedAt`、对应的 `xmlFile`，失败项包含 `error`。同一游戏的不同链接也使用不同序号，文件不会互相覆盖。失败和未完成项不生成替代 XML。
+
+编辑链接后，下方仍保留上次批次结果，下载按钮会显示「下载上次 ZIP」；点击「开始新批次」后才替换结果。
+
+「添加当前网页链接」读取当前窗口活动标签页的 GameMonetize 链接并追加到输入框，已有链接不会再次插入，数量立即更新并保存。不打开其他标签页或开始采集；其他网站或正在跳转的页面会提示后保持原列表。达到 200 个时仍可识别已有链接，新增第 201 个会被拒绝。
+
+采集期间保持侧栏打开；关闭或刷新后可重开并继续未完成项。批次存储在独立键 `seoHelper:gamemonetize:batch`，不覆盖单页结果和其他平台数据。保存失败会停止本次任务并明确提示，内存中的成功结果仍可下载。ZIP 使用标准无压缩封装，不增加运行时依赖，也不申请额外下载权限。
+
+单页采集读取当前窗口的活动标签页，从 `.product-feed` 中的 `XML-游戏ID` 按钮取得 ID，再在该页面请求同源 `/feed.php?format=1&id=游戏ID`。批量采集在扩展中直接请求允许域名的 HTML / XML，携带浏览器允许发送的站点凭据，拒绝跳转到其他网站的页面。该 XML 地址已依据网站实际按钮脚本和真实响应核对。保留响应原文，校验 RSS 结构和单个游戏 ID；HTTP 错误、HTML 验证页面、损坏 XML、ID 不符和超时均显示错误，不生成替代数据。单页另检查采集期间页面切换；页面 HTML 和 XML 请求各自最多等待 15 秒。
+
+单页仅保留上次成功保存的采集结果，独立存储于 `seoHelper:gamemonetize:game`；重开只恢复显示，不自动请求网站。重新采集开始时清空界面中的旧结果，失败不覆盖已保存记录；保存失败会保留本次界面结果并明确提示，可继续复制或下载。采集、复制和保存期间禁用功能切换。文件下载使用浏览器原生链接。
 
 ## 项目结构与扩展
 
@@ -19,10 +43,21 @@ src/
         collector.js               # 此网页的 DOM 采集与状态校验
         native-export.js           # 此网页的导出交互与下载匹配
         root-library.js            # 此功能的预制词根
+    gamemonetize/
+      game/                        # 游戏完整 XML 与手机支持状态
+        sidepanel.html / .js / .css
+        core.js                    # 活动标签页、权限、采集结果校验
+        collector.js               # 页面标记与同源 XML 请求、RSS / ID 校验
+        batch.js                   # 批量链接校验、页面请求和批次记录
+        archive.js                 # 原始 XML 与手机支持清单的 ZIP 封装
 tests/
   structure.test.js                # 入口、登记表和页面资源检查
   core.test.js                     # SEM 功能回归
   browser.mjs                      # 入口导航与 SEM 浏览器集成检查
+  gamemonetize.test.js             # 游戏采集结果、权限、来源和页面切换检查
+  gamemonetize-browser.mjs         # XML、手机支持、复制下载、异常与窄侧栏检查
+  gamemonetize-batch.test.js        # 批量 URL、安全边界、记录和 ZIP 格式检查
+  gamemonetize-batch-browser.mjs    # 混合结果、打包、停止续采、持久化和隔离检查
 ```
 
 新增功能：
@@ -115,11 +150,19 @@ Chrome 的原生下载接口只允许建议下载目录内的相对路径，不�
 
 ## 权限与存储
 
-使用 `sidePanel`、`storage`、`activeTab`、`scripting`，按需申请 `https://sem.3ue.co/*` 及 `downloads`。下载监听仅在导出任务期间工作，筛选点击后产生、来源为 SEM 且格式匹配的新下载，为该文件设置子目录并读取完成状态。点击「打开所在文件夹」时只查询对应的下载 ID，不扫描已有下载历史。Chrome 下载事件没有来源标签页 ID，因此使用串行任务、来源、格式和可用的 referrer 查询信息进行匹配。请只在一个侧边栏运行导出任务。
+使用 `sidePanel`、`storage`、`activeTab`、`scripting`，按需申请 `https://sem.3ue.co/*`、`https://gamemonetize.com/*` 及 `downloads`。下载监听仅在导出任务期间工作，筛选点击后产生、来源为 SEM 且格式匹配的新下载，为该文件设置子目录并读取完成状态。点击「打开所在文件夹」时只查询对应的下载 ID，不扫描已有下载历史。Chrome 下载事件没有来源标签页 ID，因此使用串行任务、来源、格式和可用的 referrer 查询信息进行匹配。请只在一个侧边栏运行导出任务。
 
 没有服务器、AI API、Cookie 读取、遥测或自动上传。配置、筛选模板、词根库、预览和导出进度保存在 `chrome.storage.local`。临时网关参数 `__gmitm` 不保存在研究链接中；请使用浏览器的正常登录状态。卸载会删除插件本机进度、模板和词库，已下载文件不受影响。
 
 ## 验证
+
+GameMonetize 批量专项：`npm run test:gamemonetize-batch-browser`，沿用下方浏览器配置。隔离扩展和合成 HTTP 响应验证粘贴自动去重、实时有效数量、当前页添加与重复添加、无效行保留、顺序请求、不执行网页脚本、不新建网站标签页、三种手机状态、混合成功 / HTTP 失败 / XML 错误、ZIP 下载、页面请求与 XML 请求的停止和续采、已完成项不重复请求、保存失败后仍可打包、重开与其他平台 / 单页数据隔离，以及 280px 窄侧栏。下载包和截图位于 `output/playwright/gamemonetize-batch*`。`npm test` 另检查 ZIP 头、目录、UTF-8 原文、标准 CRC-32 校验值及清单关联。
+
+2026-10-21 批量真实验证：在隔离扩展的批量界面采集 `Pro Football Eleven 2027`（87713）与 `Soccer Trainer`（69487），两项均成功，XML 与各自的真实接口响应逐字一致；生成 ZIP 并用 Python 标准库 `zipfile` 独立检查完整包、部分完成包、保存失败时的包和真实两游戏包，四个包均可解压、CRC 正确，XML 游戏 ID 与清单对应。真实截图位于 `gamemonetize-live-batch.png` / `gamemonetize-live-batch-narrow.png`，示例包为 `output/playwright/gamemonetize-live-batch.zip`。真实检查未覆盖全站游戏或手机实机兼容性。
+
+GameMonetize 专项：`npm run test:gamemonetize-browser`，沿用下方 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE` 配置。隔离扩展和明确标记的合成网页验证原始 XML、Yes / No / 未标注、复制 JSON / XML、原生下载、重开恢复、权限拒绝、HTTP / HTML / 损坏 XML / ID 不符 / 网络异常 / 超时、页面切换、保存与剪贴板失败、其他平台数据隔离及 280px 窄侧栏。模拟截图位于 `output/playwright/gamemonetize-game*.png`；不使用用户浏览器配置或剪贴板。
+
+2026-10-21 真实页面验证：在隔离扩展中采集 `Pro Football Eleven 2027`（ID `87713`），手机支持为 Yes，原始 XML 与真实同源接口响应逐字一致。真实截图为 `output/playwright/gamemonetize-live.png` / `gamemonetize-live-narrow.png`，280px 下无横向溢出。此检查只验证该游戏的读取流程，未执行手机实机或全站兼容测试。
 
 Node.js 22+ 下运行：
 

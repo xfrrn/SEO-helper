@@ -14,6 +14,20 @@ export const platforms = [
       },
     ],
   },
+  {
+    id: "gamemonetize",
+    name: "GameMonetize",
+    domain: "gamemonetize.com",
+    features: [
+      {
+        id: "game",
+        name: "游戏采集",
+        description: "读取游戏 XML 和手机支持状态，支持粘贴链接批量采集。",
+        capabilities: ["完整 XML", "手机支持", "批量 / ZIP"],
+        page: "src/platforms/gamemonetize/game/sidepanel.html",
+      },
+    ],
+  },
 ];
 
 export function filterPlatforms(items, query) {
