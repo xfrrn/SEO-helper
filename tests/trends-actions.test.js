@@ -36,13 +36,22 @@ test("quick comparison keeps source filters, deduplicates and always uses new Ex
   assert.throws(() => quickComparisonUrl("a", DEFAULT_SETTINGS, "https://evil.test/explore"));
 });
 
-test("page action messages accept only top-level matching Trends explore documents", () => {
+test("page action messages accept active top-level Trends pages after same-document navigation", () => {
   const url = "https://trends.google.com/explore?q=test";
-  const sender = { frameId: 0, url, tab: { id: 1, windowId: 2, url } };
+  const sender = { frameId: 0, documentLifecycle: "active", url, tab: { id: 1, windowId: 2, url } };
   assert.equal(sourceTab(sender), sender.tab);
+  for (const initialUrl of ["https://trends.google.com/", "https://trends.google.com/trends/?geo=US", `${url}2`]) {
+    assert.equal(sourceTab({ ...sender, url: initialUrl }), sender.tab);
+  }
+  assert.equal(sourceTab({ ...sender, url: "https://trends.google.com/", tab: { ...sender.tab, pendingUrl: url } }).url, url);
   for (const invalid of [{ ...sender, frameId: 1 }, { ...sender, url: "https://evil.test/explore" },
-    { ...sender, tab: { ...sender.tab, url: `${url}2` } }, { ...sender, tab: { ...sender.tab, pendingUrl: "https://evil.test/" } },
-    { ...sender, url: "https://trends.google.com/trends/embed/explore/TIMESERIES" }]) assert.throws(() => sourceTab(invalid));
+    { ...sender, tab: { ...sender.tab, url: "https://evil.test/explore" } },
+    { ...sender, tab: { ...sender.tab, pendingUrl: "https://evil.test/" } },
+    { ...sender, tab: { ...sender.tab, pendingUrl: `${url}2` } },
+    { ...sender, tab: { ...sender.tab, url: "https://trends.google.com/" } },
+    { ...sender, tab: { ...sender.tab, url: "https://trends.google.com/trends/embed/explore/TIMESERIES" } },
+    ...["cached", "prerender", "pending_deletion"].map(documentLifecycle => ({ ...sender, documentLifecycle })),
+    { ...sender, tab: { ...sender.tab, id: undefined } }, { ...sender, tab: { ...sender.tab, windowId: undefined } }]) assert.throws(() => sourceTab(invalid));
 });
 
 test("quick comparison reuses only its own result tab in the source window", async () => {

@@ -1,6 +1,6 @@
 {
   "name": "seo-helper",
-  "version": "0.13.2",
+  "version": "0.13.3",
   "private": true,
   "type": "module",
   "scripts": { "test": "node --test tests/*.test.js", "test:browser": "node tests/browser.mjs", "test:platforms-browser": "node tests/platforms-browser.mjs", "test:sim-browser": "node tests/sim-browser.mjs", "test:trends-browser": "node tests/trends-browser.mjs", "test:analysis-browser": "node tests/analysis-browser.mjs", "test:trends-actions-browser": "node tests/trends-actions-browser.mjs", "test:gamemonetize-browser": "node tests/gamemonetize-browser.mjs", "test:gamemonetize-batch-browser": "node tests/gamemonetize-batch-browser.mjs" }

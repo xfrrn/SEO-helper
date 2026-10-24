@@ -23,11 +23,12 @@ export function validateSettings(value) {
 }
 
 export function sourceTab(sender) {
-  if (sender.frameId !== 0 || !Number.isInteger(sender.tab?.id) || !Number.isInteger(sender.tab?.windowId) || !isExploreUrl(sender.url)) {
+  if (sender.frameId !== 0 || !Number.isInteger(sender.tab?.id) || !Number.isInteger(sender.tab?.windowId) || !isTrendsUrl(sender.url) || !isExploreUrl(sender.tab.url)) {
     throw new Error("仅支持 Google Trends 探索页的查询列表。");
   }
-  if (sender.tab.pendingUrl && sender.tab.pendingUrl !== sender.url) throw new Error("页面正在跳转，请加载完成后重试。");
-  if (sender.tab.url !== sender.url) throw new Error("页面已切换，请重试。");
+  if (sender.documentLifecycle && sender.documentLifecycle !== "active") throw new Error("来源页面已失效，请在当前探索页重试。");
+  // SPA navigation changes tab.url while sender.url keeps the document's initial URL.
+  if (sender.tab.pendingUrl && sender.tab.pendingUrl !== sender.tab.url) throw new Error("页面正在跳转，请加载完成后重试。");
   return sender.tab;
 }
 

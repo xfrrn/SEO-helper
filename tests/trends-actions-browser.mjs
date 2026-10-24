@@ -58,6 +58,12 @@ try {
   // Stub only the remote translation transport; production validation and message routing run unchanged.
   await worker.evaluate(() => {
     chrome.permissions.request = async () => { throw new Error("Automatic page actions must not request optional permissions"); };
+    globalThis.testPageSenders = [];
+    chrome.runtime.onMessage.addListener((message, sender) => {
+      if (["trends:translate", "trends:compare", "trends:analyze"].includes(message.type)) {
+        globalThis.testPageSenders.push({ type: message.type, url: sender.url, tabUrl: sender.tab?.url, frameId: sender.frameId });
+      }
+    });
     globalThis.realFetch = fetch;
     globalThis.testTranslationRequests = [];
     globalThis.testTranslationError = "";
@@ -70,16 +76,30 @@ try {
       return Response.json([[[`合成中文：${url.searchParams.get("q")}`]]]);
     };
   });
-  // A fresh install works before opening any side panel or saving any settings.
+  // New Explore is a SPA: Chrome retains the initial homepage in MessageSender.url.
   const source = await context.newPage();
-  await source.goto("https://trends.google.com/trends/explore?q=pdf&date=now%207-d&geo=US&cat=7&gprop=youtube&hl=zh-CN");
+  await source.goto("https://trends.google.com/");
+  assert.equal(await source.locator('[data-seo-helper="trends-actions"]').count(), 0);
+  await source.evaluate(({ url, html }) => {
+    history.pushState({}, "", url);
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    document.body.replaceChildren(...doc.body.childNodes);
+  }, { url: "/trends/explore?q=pdf&date=now%207-d&geo=US&cat=7&gprop=youtube&hl=zh-CN", html: fixture(true) });
   await source.locator("#queries a").first().locator("[data-seo-helper-translation]").waitFor();
+  const firstSender = await worker.evaluate(() => globalThis.testPageSenders.find(message => message.type === "trends:translate"));
+  assert.equal(firstSender.url, "https://trends.google.com/");
+  assert.equal(firstSender.tabUrl, source.url());
+  assert.equal(firstSender.frameId, 0);
+  assert.equal(await source.locator('[data-seo-helper="trends-actions"] #notice').isVisible(), false);
   assert.equal(await worker.evaluate(async key => (await chrome.storage.local.get(key))[key], SETTINGS_KEY), undefined);
   assert.equal((await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ["SIDE_PANEL"] }))).length, 0);
   // Old disabled switches cannot block the updated feature, including after reload.
   await worker.evaluate(async ({ key, settings }) => chrome.storage.local.set({ [key]: { ...settings, enabled: false, translate: false } }), { key: SETTINGS_KEY, settings: DEFAULT_SETTINGS });
-  await source.reload();
-  await source.locator("#queries a").first().locator("[data-seo-helper-translation]").waitFor();
+  const upgraded = await context.newPage();
+  await upgraded.goto(source.url());
+  await upgraded.reload();
+  await upgraded.locator("#queries a").first().locator("[data-seo-helper-translation]").waitFor();
+  await upgraded.close();
   const panel = await context.newPage();
   const analysisUrl = `chrome-extension://${id}/src/platforms/google-trends/analysis/sidepanel.html`;
   await panel.goto(analysisUrl);
@@ -241,6 +261,9 @@ try {
   const savedNative = (await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ["SIDE_PANEL"] }))).find(value => value.documentUrl.includes("request="));
   const requestCount = await worker.evaluate(() => chrome.runtime.getContexts({ contextTypes: ["SIDE_PANEL"] }));
   assert.equal(requestCount.length, 1);
+  for (const type of ["trends:translate", "trends:compare", "trends:analyze"]) {
+    assert.ok(await worker.evaluate(type => globalThis.testPageSenders.some(message => message.type === type && message.url === "https://trends.google.com/" && message.tabUrl.includes("/trends/explore?")), type));
+  }
   const once = await context.newPage();
   await once.goto(savedNative.documentUrl);
   await once.waitForFunction(() => !document.getElementById("analyze").disabled);
@@ -250,10 +273,18 @@ try {
   const modern = await context.newPage();
   await modern.goto("https://trends.google.com/explore?q=modern&date=today%201-m");
   await modern.locator('[data-seo-helper="trends-actions"]').waitFor();
+  await modern.locator("#queries [data-seo-helper-translation]").first().waitFor();
+  await modern.evaluate(() => {
+    history.replaceState({}, "", "/explore?q=changed&date=today%201-m&geo=JP&cat=7&gprop=news&hl=zh-CN");
+    document.querySelector("#queries td:nth-child(2) div span").textContent = "modern navigated scheduler";
+  });
+  await modern.locator("#queries [data-seo-helper-translation]").filter({ hasText: "合成中文：modern navigated scheduler" }).waitFor();
+  assert.equal(await modern.locator('[data-seo-helper="trends-actions"] #notice').isVisible(), false);
   assert.equal(await modern.locator("#queries a").count(), 0); // Actual new Explore uses table cells, not query links.
   await select(modern);
   await toolbar(modern).getByRole("button", { name: "对比", exact: true }).click();
-  await result.waitForURL(url => url.searchParams.get("date") === "today 1-m");
+  await result.waitForURL(url => url.searchParams.get("q")?.endsWith("modern navigated scheduler"));
+  for (const key of ["date", "geo", "cat", "gprop", "hl"]) assert.equal(new URL(result.url()).searchParams.get(key), new URL(modern.url()).searchParams.get(key));
   const home = await context.newPage();
   await home.goto(`chrome-extension://${id}/src/app/sidepanel.html`);
   await home.getByText("网页自动显示中文翻译", { exact: false }).waitFor();
@@ -261,7 +292,7 @@ try {
   await modern.locator("#queries td:nth-child(2) [data-seo-helper-translation]").first().waitFor();
   assert.equal(await modern.locator("#queries td:first-child [data-seo-helper-translation]").count(), 0);
   assert.equal(await modern.locator("#topics [data-seo-helper-translation]").count(), 0);
-  assert.equal(await modern.locator("#queries td:nth-child(2) [data-seo-helper-translation]").first().textContent(), "合成中文：tangerine file converter");
+  assert.equal(await modern.locator("#queries td:nth-child(2) [data-seo-helper-translation]").first().textContent(), "合成中文：modern navigated scheduler");
   await modern.evaluate(html => { document.getElementById("queries").innerHTML = html; }, modernRow("new paginated query"));
   await modern.locator("#queries tr [data-seo-helper-translation]").waitFor();
   await modern.locator("#queries tr").focus();
@@ -333,5 +364,5 @@ try {
   await modern.locator("#queries [data-seo-helper-translation]").waitFor();
   assert.equal((await worker.evaluate(() => chrome.scripting.getRegisteredContentScripts())).length, 1);
   assert.deepEqual(errors, []);
-  console.log("Trends actions browser passed: automatic fresh install and legacy-off reload without optional permission requests or feature activation, table/classic queries, baseline validation/storage failure, native first-click/continuous analysis, task protection, multi-window isolation, comparison reuse/filters, clipboard errors, online translation/cache/retry/HTTP/network failures, dynamic/recycled rows, pointer/keyboard, simulated revocation/cleanup/automatic recovery.");
+  console.log("Trends actions browser passed: real Chrome SPA sender URLs after homepage pushState and query replaceState, translation/comparison/native analysis without losing click activation, current filters, automatic fresh install and legacy-off reload, table/classic queries, baseline validation/storage failure, task protection, multi-window isolation, clipboard errors, translation/cache/retry/HTTP/network failures, dynamic/recycled rows, pointer/keyboard, simulated revocation/cleanup/automatic recovery.");
 } finally { await context.close(); networkBoundary.closeAllConnections(); await new Promise(resolve => networkBoundary.close(resolve)); }
