@@ -1,8 +1,10 @@
 import { STORAGE_KEY, collectCurrentGame, currentGameTab, validateCapture, mobileReadyLabel, permitGameMonetize } from "./core.js";
 import { BATCH_STORAGE_KEY, MAX_BATCH_URLS, inspectGameUrls, appendGameUrl, parseGameUrls, collectGameUrl, validateBatch } from "./batch.js";
 import { buildBatchZip } from "./archive.js";
+import { panelActivity } from "../../../shared/panel-activity.js";
 
 const $ = id => document.getElementById(id);
+const reportActivity = panelActivity();
 let result = null;
 let busy = true;
 let batch = { input: "", rows: [] };
@@ -15,8 +17,9 @@ function status(message, error = false) {
 }
 
 function setBusy(value) {
+  reportActivity(value);
   busy = value;
-  for (const id of ["collect", "feature-home", "copy-all", "copy-xml", "download-xml", "mode-current", "mode-batch", "batch-urls", "batch-start", "batch-add-current"]) $(id).disabled = value;
+  for (const id of ["collect", "feature-home", "copy-all", "copy-xml", "download-xml", "mode-current", "mode-batch", "batch-urls", "batch-start", "batch-retry", "batch-add-current"]) $(id).disabled = value;
   $("collect").textContent = value ? "正在采集…" : "采集当前游戏";
   $("batch-download").disabled = value || !batch.rows.some(row => row.status === "success");
   $("batch-stop").hidden = !batchController;
@@ -65,6 +68,7 @@ function updateBatchStart() {
   const matches = valid && matchingBatch(urls);
   const pending = valid && matchingPendingBatch(urls);
   const edited = batch.rows.length > 0 && !matches;
+  $("batch-retry").hidden = !matches || !batch.rows.some(row => row.status === "error");
   $("batch-start").textContent = pending ? "继续未完成项" : edited ? "开始新批次" : batch.rows.length ? "重新采集全部" : "开始批量采集";
   $("batch-download").textContent = edited ? "下载上次 ZIP" : "下载 ZIP";
   $("batch-input-note").hidden = !edited;
@@ -157,11 +161,14 @@ $("batch-add-current").addEventListener("click", () => run(async () => {
   await saveBatch();
   status(next.added ? `当前网页已添加，不重复链接共 ${next.urls.length} 个。` : "当前网页已在列表中，未重复添加。");
 }));
-$("batch-start").addEventListener("click", () => run(async () => {
+async function startBatch(retryFailures = false) {
   tidyBatchInput();
   const urls = parseGameUrls($("batch-urls").value);
   await permitGameMonetize();
-  if (!matchingPendingBatch(urls)) batch.rows = urls.map(inputUrl => ({ inputUrl, status: "pending" }));
+  if (retryFailures) {
+    if (!matchingBatch(urls)) throw new Error("链接已修改，请恢复原列表后重试失败项，或开始新批次。");
+    batch.rows = batch.rows.map(row => row.status === "error" ? { inputUrl: row.inputUrl, status: "pending" } : row);
+  } else if (!matchingPendingBatch(urls)) batch.rows = urls.map(inputUrl => ({ inputUrl, status: "pending" }));
   renderBatch();
   await saveBatch();
   const controller = new AbortController();
@@ -174,10 +181,16 @@ $("batch-start").addEventListener("click", () => run(async () => {
       renderBatch();
       status(`正在采集第 ${index + 1} / ${batch.rows.length} 个游戏…`);
       try {
-        const capture = await collectGameUrl(row.inputUrl, controller.signal);
+        const capture = await collectGameUrl(row.inputUrl, controller.signal, (seconds, rateLimited) => {
+          $("batch-wait").hidden = !seconds;
+          $("batch-wait").textContent = seconds ? rateLimited
+            ? `网站限流（HTTP 429），${seconds} 秒后自动重试；可点击“停止采集”。`
+            : `采集间隔：${seconds} 秒后继续。` : "";
+        });
         batch.rows[index] = { inputUrl: row.inputUrl, status: "success", capture };
       } catch (error) {
         if (controller.signal.aborted) break;
+        if (error.status === 429) throw new Error("网站持续限流（HTTP 429），批次已暂停。成功结果已保留，稍后可继续未完成项。");
         batch.rows[index] = { inputUrl: row.inputUrl, status: "error", error: error.message };
       }
       activeBatchIndex = -1;
@@ -188,9 +201,12 @@ $("batch-start").addEventListener("click", () => run(async () => {
   } finally {
     batchController = null;
     activeBatchIndex = -1;
+    $("batch-wait").hidden = true;
     renderBatch();
   }
-}));
+}
+$("batch-start").addEventListener("click", () => run(() => startBatch()));
+$("batch-retry").addEventListener("click", () => run(() => startBatch(true)));
 $("batch-stop").addEventListener("click", () => {
   batchController?.abort();
   $("batch-stop").disabled = true;

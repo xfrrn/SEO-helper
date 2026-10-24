@@ -24,6 +24,10 @@ export async function readGamePage(expectedUrl, html, signal) {
     feedUrl.searchParams.set("id", gameId);
     const timeout = AbortSignal.timeout(15000);
     const response = await fetch(feedUrl.href, { credentials: "include", signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+    if (response.status === 429) return {
+      error: "XML 请求被网站限流（HTTP 429），请等待后重试。",
+      status: 429, retryAfter: response.headers.get("Retry-After"),
+    };
     if (!response.ok) throw new Error(`XML 请求失败（HTTP ${response.status}），请在网站确认后重试。`);
     const xml = await response.text();
     const parsed = new DOMParser().parseFromString(xml, "application/xml");

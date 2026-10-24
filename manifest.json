@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "SEO Helper",
-  "description": "按平台组织的 SEO 网页工具，支持 SEM 词根研究、筛选模板与原生导出、GameMonetize 单页及批量采集。",
-  "version": "0.12.1",
+  "description": "按平台组织的 SEO 网页工具，支持 SEM / SIM 词根研究、Google Trends 分组对比及词义分析、GameMonetize 游戏采集。",
+  "version": "0.13.2",
   "minimum_chrome_version": "116",
   "permissions": ["sidePanel", "storage", "activeTab", "scripting"],
   "optional_permissions": ["downloads"],
-  "optional_host_permissions": ["https://sem.3ue.co/*", "https://gamemonetize.com/*"],
+  "host_permissions": ["https://trends.google.com/*", "https://translate.googleapis.com/*"],
+  "optional_host_permissions": ["https://sem.3ue.co/*", "https://sim.3ue.co/*", "https://gamemonetize.com/*"],
   "action": { "default_title": "打开 SEO Helper" },
   "background": { "service_worker": "src/app/background.js", "type": "module" },
   "side_panel": { "default_path": "src/app/sidepanel.html" }

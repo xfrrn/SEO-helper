@@ -65,11 +65,13 @@
         </div>
         <button id="open-selected" class="wide primary" type="button">打开所选结果</button>
         <ol id="root-list" class="root-list" aria-labelledby="roots-heading" tabindex="-1"></ol>
+        <button id="clear-research" type="button" class="settings-link">清空待研究</button>
         <p id="root-list-empty" class="hint" hidden>展开“批量粘贴 / 编辑词根”，每行输入一批。</p>
       </fieldset>
     </form>
     <section aria-labelledby="results-heading">
       <div class="section-heading"><h2 id="results-heading">本批词根结果</h2><span id="progress" class="muted">0 / 0 已导出</span></div>
+      <button id="reset-batch" type="button" class="settings-link">清除本批记录</button>
       <div id="results"></div>
       <p id="empty">添加词根后，在这里逐个查看筛选结果。</p>
     </section>

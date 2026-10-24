@@ -7,7 +7,7 @@ import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readRenderedPage } from "../src/platforms/sem/keyword-magic/collector.js";
 import { researchKey, parseBatches } from "../src/platforms/sem/keyword-magic/core.js";
-import { PRESET_ROOTS } from "../src/platforms/sem/keyword-magic/root-library.js";
+import { PRESET_ROOTS } from "../src/shared/root-library.js";
 import { clickNativeExport } from "../src/platforms/sem/keyword-magic/native-export.js";
 
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || "playwright");
@@ -22,7 +22,7 @@ await mkdir(downloadsDir, { recursive: true });
 await writeFile(join(profile, "Default/Preferences"), JSON.stringify({ download: { default_directory: downloadsDir, prompt_for_download: false, directory_upgrade: true } }));
 const manifest = JSON.parse(await readFile(join(root, "manifest.json"), "utf8"));
 // Grant only the production optional host up front in the isolated test copy.
-manifest.host_permissions = manifest.optional_host_permissions;
+manifest.host_permissions = [...manifest.host_permissions, ...manifest.optional_host_permissions];
 manifest.permissions.push(...manifest.optional_permissions);
 manifest.optional_permissions = [];
 await writeFile(join(extension, "manifest.json"), JSON.stringify(manifest));
@@ -105,10 +105,10 @@ try {
   const cdp = await context.newCDPSession(panel);
   await cdp.send("Browser.setDownloadBehavior", { behavior: "default", eventsEnabled: true });
   await panel.goto(`chrome-extension://${id}/${manifest.side_panel.default_path}`);
-  await panel.getByRole("link", { name: "词根研究", exact: true }).click();
+  await panel.locator('a[href$="sem/keyword-magic/sidepanel.html"]').click();
   await panel.locator("#filter-description").filter({ hasText: "30,000" }).waitFor();
   await panel.getByRole("button", { name: "全部功能", exact: true }).click();
-  await panel.getByRole("link", { name: "词根研究", exact: true }).click();
+  await panel.locator('a[href$="sem/keyword-magic/sidepanel.html"]').click();
   const queryPage = await context.newPage();
   queryPage.on("download", (download) => nativeDownloads.push(download));
   await queryPage.bringToFront();
@@ -146,6 +146,8 @@ try {
     await panel.locator("#export-batch").click();
     await panel.locator("#export-scope").filter({ hasText: "正在原生导出" }).waitFor();
     assert.equal(await panel.locator("#feature-home").isDisabled(), true);
+    assert.equal(await panel.locator("#clear-research").isDisabled(), true);
+    assert.equal(await panel.locator("#reset-batch").isDisabled(), true);
     await panel.locator("#export-scope").filter({ hasText: `已完成 ${count} 个词根的原生导出` }).waitFor({ timeout: 30000 });
   };
   const input = "checker,calculator\ntranslator,ai writer\nchecker";
@@ -545,6 +547,62 @@ try {
   await panel.locator("#export-current").click();
   await panel.locator("#export-scope").filter({ hasText: "已完成 1 个词根的原生导出" }).waitFor({ timeout: 15000 });
   assert.equal(await panel.locator("#progress").textContent(), "2 / 2 已导出");
+  // Old progress survives reload until explicitly cleared; reset includes empty results.
+  await setRoots("Recorder,Silent\nArchived");
+  await choose(1);
+  const archivedKey = await panel.locator("#results details").getAttribute("data-key");
+  await panel.evaluate(async (key) => {
+    const { seoHelper } = await chrome.storage.local.get("seoHelper");
+    seoHelper.exports[key] = { state: "empty" };
+    const silentKey = Object.keys(seoHelper.exports).find(key => seoHelper.exports[key].root === "Silent");
+    seoHelper.exports[silentKey].state = "empty";
+    seoHelper.records[silentKey] = { state: "done", rows: [], captures: [] };
+    seoHelper.config.batchIndex = 0;
+    await chrome.storage.local.set({ seoHelper });
+  }, archivedKey);
+  await panel.reload();
+  await useFixtureTab();
+  await panel.locator("#progress").filter({ hasText: "1 / 2 已导出 · 1 无结果" }).waitFor();
+  const beforeReset = await readState();
+  panel.once("dialog", dialog => dialog.dismiss());
+  await panel.locator("#reset-batch").click();
+  assert.deepEqual(await readState(), beforeReset);
+  await panel.evaluate(() => { window.savedSet = chrome.storage.local.set.bind(chrome.storage.local); chrome.storage.local.set = async () => { throw new Error("simulated quota"); }; });
+  panel.once("dialog", dialog => dialog.accept());
+  await panel.locator("#reset-batch").click();
+  await panel.locator("#export-scope").filter({ hasText: "本机进度保存失败" }).waitFor();
+  assert.deepEqual(await readState(), beforeReset);
+  assert.equal(await panel.locator("#progress").textContent(), "1 / 2 已导出 · 1 无结果");
+  await panel.evaluate(() => { chrome.storage.local.set = window.savedSet; });
+  panel.once("dialog", dialog => dialog.accept());
+  await panel.locator("#reset-batch").click();
+  await panel.locator("#export-scope").filter({ hasText: "已清除本批记录" }).waitFor();
+  assert.equal(await panel.locator("#progress").textContent(), "0 / 2 已导出");
+  assert.deepEqual((await readState()).config, beforeReset.config);
+  assert.deepEqual((await readState()).exports, { [archivedKey]: beforeReset.exports[archivedKey] });
+  assert.equal(Object.keys((await readState()).records).length, 0);
+  await panel.reload();
+  await useFixtureTab();
+  await panel.locator("#progress").filter({ hasText: "0 / 2 已导出" }).waitFor();
+  assert.equal(await panel.locator("#reset-batch").isDisabled(), true);
+  const downloadsBeforeReset = nativeDownloads.length;
+  await exportBatch(2);
+  assert.equal(nativeDownloads.length, downloadsBeforeReset + 2);
+  const beforeClear = await readState();
+  panel.once("dialog", dialog => dialog.dismiss());
+  await panel.locator("#clear-research").click();
+  assert.deepEqual(await readState(), beforeClear);
+  panel.once("dialog", dialog => dialog.accept());
+  await panel.locator("#clear-research").click();
+  await panel.locator("#export-scope").filter({ hasText: "已清空待研究列表" }).waitFor();
+  const cleared = await readState();
+  assert.deepEqual(cleared, { ...beforeClear, config: { ...beforeClear.config, roots: "", batchIndex: 0 }, records: {}, exports: {} });
+  for (const file of firstFiles) assert.ok((await readFile(file.path, "utf8")).includes("native-only row"));
+  await panel.reload();
+  await useFixtureTab();
+  await panel.locator("#root-count").filter({ hasText: "0 批 · 0 词" }).waitFor();
+  assert.equal(await panel.locator("#export-batch").isDisabled(), true);
+  assert.equal(await panel.locator("#clear-research").isDisabled(), true);
   // Long multi-root lines remain readable in a narrow side panel.
   await setRoots("Translator,Generator,Example,Convert,Online\nDownloader,Maker,Creator,Editor,Processor\nAnalyzer,Designer,Compiler,Evaluator,Scheduler\nChecker,Detector,Scraper,Manager,Explorer\nDashboard,Planner,Tracker,Recorder,Optimizer\nResponder");
   await choose(3);
@@ -559,7 +617,7 @@ try {
   await queryPage.waitForURL("chrome://settings/downloads");
   await panel.locator("#export-scope").filter({ hasText: "全局下载设置" }).waitFor();
   assert.deepEqual(errors, []);
-  console.log("PASS: empty SEM results (mixed/all-empty batches, reload/retry/new filters, current export, preview, loading/login/error guards), all 51 preset roots, library editing/persistence, saved filters, native exports and narrow layout. All SEM responses mocked.");
+  console.log("PASS: clear/reset research (cancel, save failure, reload, re-export, preserved files/settings/other batches), empty SEM results, all 51 preset roots, library editing/persistence, saved filters, native exports and narrow layout. All SEM responses mocked.");
 } catch (error) {
   for (const page of context.pages()) {
     console.error(JSON.stringify({ url: page.url(), text: (await page.locator("body").innerText().catch(() => "unavailable")).slice(0, 4000) }));

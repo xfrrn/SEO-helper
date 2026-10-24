@@ -66,14 +66,16 @@ export function validateBatch(value) {
   return { input: value.input, rows };
 }
 
-export async function collectGameUrl(inputUrl, signal) {
-  const url = normalizeUrl(inputUrl);
+async function collectGameUrlOnce(url, signal) {
   signal?.throwIfAborted();
   const timeout = AbortSignal.timeout(15000);
   let response;
   let html;
   try {
     response = await fetch(url, { credentials: "include", signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+    if (response.status === 429) throw Object.assign(new Error("游戏页面请求被网站限流（HTTP 429）。"), {
+      status: 429, retryAfter: response.headers.get("Retry-After"),
+    });
     if (!response.ok) throw new Error(`游戏页面请求失败（HTTP ${response.status}）。`);
     if (!isGameMonetizeUrl(response.url)) throw new Error("游戏页面已跳转到其他网站，请检查原链接。");
     html = await response.text();
@@ -84,6 +86,44 @@ export async function collectGameUrl(inputUrl, signal) {
   signal?.throwIfAborted();
   const result = await readGamePage(response.url, html, signal);
   signal?.throwIfAborted();
-  if (result.error) throw new Error(result.error);
+  if (result.error) throw Object.assign(new Error(result.error), { status: result.status, retryAfter: result.retryAfter });
   return validateCapture(result);
+}
+
+export function rateLimitDelay(retryAfter, attempt, now = Date.now()) {
+  const value = retryAfter?.trim();
+  const delay = /^\d+$/.test(value) ? Number(value) * 1000 : /^[A-Za-z]/.test(value) ? Date.parse(value) - now : NaN;
+  return Number.isFinite(delay) ? Math.max(0, delay) : 60000 * 2 ** attempt;
+}
+
+async function waitUntil(until, signal, onWait, rateLimited) {
+  while (Date.now() < until) {
+    signal?.throwIfAborted();
+    onWait?.(Math.ceil((until - Date.now()) / 1000), rateLimited);
+    await new Promise((resolve, reject) => {
+      const finish = () => { signal?.removeEventListener("abort", abort); resolve(); };
+      const timer = setTimeout(finish, Math.min(1000, until - Date.now()));
+      const abort = () => { clearTimeout(timer); signal.removeEventListener("abort", abort); reject(signal.reason); };
+      signal?.addEventListener("abort", abort, { once: true });
+    });
+  }
+  signal?.throwIfAborted();
+  onWait?.(0, false);
+}
+
+let nextGameAt = 0;
+let cooldownUntil = 0;
+
+export async function collectGameUrl(inputUrl, signal, onWait) {
+  const url = normalizeUrl(inputUrl);
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    await waitUntil(Math.max(nextGameAt, cooldownUntil), signal, onWait, cooldownUntil > Date.now());
+    nextGameAt = Date.now() + 3000;
+    try { return await collectGameUrlOnce(url, signal); }
+    catch (error) {
+      if (error.status !== 429) throw error;
+      cooldownUntil = Date.now() + rateLimitDelay(error.retryAfter, attempt);
+      if (attempt === 2) throw error;
+    }
+  }
 }

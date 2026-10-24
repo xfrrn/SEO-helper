@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEO Helper · Google Trends 分组对比</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header><strong>Google Trends</strong><button id="feature-home" type="button">全部功能</button></header>
+  <nav class="feature-nav" aria-label="Google Trends 功能"><span aria-current="page">分组对比</span><a id="feature-analysis" href="../analysis/sidepanel.html">词义分析</a></nav>
+  <main>
+    <h1>分组对比</h1>
+    <p class="intro">点击一组词，在新版探索页填入对比。</p>
+    <fieldset id="controls" disabled>
+      <div class="filters">
+        <label>时间范围<select id="date">
+          <option value="now 1-H">过去 1 小时</option>
+          <option value="now 4-H">过去 4 小时</option>
+          <option value="now 1-d">过去 24 小时</option>
+          <option value="now 7-d">过去一周</option>
+          <option value="today 1-m">过去一个月</option>
+          <option value="today 3-m">过去 3 个月</option>
+          <option value="today 12-m">过去 1 年</option>
+          <option value="today 5-y">过去 5 年</option>
+          <option value="all">2004 年至今</option>
+          <option id="custom-option" value="custom">自定义</option>
+        </select></label>
+        <label>地理范围<select id="geo"><option value="">全球</option><option value="US">美国</option><option value="GB">英国</option><option value="CA">加拿大</option><option value="AU">澳大利亚</option><option value="DE">德国</option><option value="FR">法国</option><option value="IN">印度</option><option value="JP">日本</option><option value="CN">中国</option><option value="HK">中国香港</option><option value="TW">中国台湾</option></select></label>
+      </div>
+      <div id="custom-date" hidden>
+        <div class="filters">
+          <label>开始日期<input id="date-start" type="date" min="2004-01-01" required></label>
+          <label>结束日期<input id="date-end" type="date" min="2004-01-01" required></label>
+        </div>
+        <button id="apply-date" type="button">应用日期</button>
+      </div>
+      <button id="use-current" type="button" class="text-button">读取当前 Trends 时间与地区</button>
+      <details id="group-editor">
+        <summary>编辑分组</summary>
+        <label for="groups">每行一组，词之间用逗号分隔</label>
+        <textarea id="groups" rows="9" spellcheck="false" maxlength="32000" aria-describedby="group-help"></textarea>
+        <p id="group-help" class="hint">每组最多 8 个词，共 200 个；ai writer 等含空格的词组保持完整。</p>
+        <button id="save-groups" type="button">保存分组</button>
+      </details>
+      <div class="list-heading"><h2>对比词组</h2><span id="group-count" class="hint"></span></div>
+      <ol id="group-list" aria-label="点击词组开始对比"></ol>
+      <p id="empty" class="hint" hidden>还没有词组，展开“编辑分组”添加。</p>
+    </fieldset>
+  </main>
+  <footer>
+    <p id="status" role="status" aria-live="polite">选一组词开始，其他已填入的词会被替换。</p>
+    <p class="hint">使用新版探索页；请保持 Google 登录。</p>
+  </footer>
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

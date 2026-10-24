@@ -22,11 +22,14 @@ const context = await chromium.launchPersistentContext(join(output, `gamemonetiz
   viewport: { width: 380, height: 900 }, downloadsPath: join(output, "gamemonetize-batch-downloads"),
 });
 const xmlFor = id => `<?xml version="1.0" encoding="utf-8"?>\r\n<rss><channel><item><id>${id}</id><title>合成游戏 ${id}</title><description>保留原始 XML\r\n  包括空格 &amp; 中文</description></item></channel></rss>\r\n`;
-const games = { "/a-game": [10, "Yes"], "/b-game": [11, "No"], "/c-game": [12, null], "/broken-game": [13, "Yes"], "/hold-page-game": [14, "Yes"], "/hold-feed-game": [15, "Yes"] };
+const games = { "/a-game": [10, "Yes"], "/b-game": [11, "No"], "/c-game": [12, null], "/broken-game": [13, "Yes"], "/hold-page-game": [14, "Yes"], "/hold-feed-game": [15, "Yes"], "/limited-game": [16, "Yes"] };
 const requests = [];
 const errors = [];
 let holdPage = true;
 let holdFeed = true;
+let alwaysLimited = false;
+let limitReplies = 0;
+let retryAfter = "0";
 let release;
 context.on("page", page => page.on("pageerror", error => errors.push(error.message)));
 try {
@@ -41,6 +44,10 @@ try {
     if (url.pathname === "/feed.php") {
       assert.equal(url.searchParams.get("format"), "1");
       const id = url.searchParams.get("id");
+      if (id === "16" && (alwaysLimited || limitReplies > 0)) {
+        limitReplies--;
+        return route.fulfill({ status: 429, headers: { "Retry-After": retryAfter, "Cache-Control": "no-store" }, body: "Synthetic rate limit" });
+      }
       return route.fulfill({ contentType: "text/xml", headers: { "Cache-Control": "no-store" }, body: xmlFor(id === "13" ? "999" : id) }).catch(error => {
         if (!/closed|canceled|cancelled|invalid interception/i.test(error.message)) throw error;
       });
@@ -138,6 +145,7 @@ try {
 
   await panel.locator("#batch-urls").fill(["a-game", "hold-page-game", "b-game"].map(path => `${ORIGIN}/${path}`).join("\n"));
   assert.equal(await panel.locator("#batch-input-note").isVisible(), true);
+  assert.equal(await panel.locator("#batch-retry").isHidden(), true);
   assert.equal(await panel.locator("#batch-download").textContent(), "下载上次 ZIP");
   assert.equal(await panel.locator("#batch-start").textContent(), "开始新批次");
   await panel.locator("#batch-start").click();
@@ -217,11 +225,77 @@ try {
   await idle();
   assert.equal(await panel.locator("#batch-urls").inputValue(), beforeWrongPage);
   assert.equal(await panel.locator("#batch-url-count").textContent(), "不重复链接：3 个");
+  const kept = Array.from({ length: 5 }, (_, index) => {
+    const inputUrl = `${ORIGIN}/kept-${index}-game`;
+    return { inputUrl, status: "success", capture: { ...single, pageUrl: inputUrl, gameId: String(100 + index), title: `保留的成功游戏 ${index}`, xml: xmlFor(100 + index) } };
+  });
+  const limitedUrl = `${ORIGIN}/limited-game`;
+  const restoreRows = async rows => {
+    await panel.evaluate(({ key, rows }) => chrome.storage.local.set({ [key]: { input: rows.map(row => row.inputUrl).join("\n"), rows } }), { key: BATCH_STORAGE_KEY, rows });
+    await panel.reload();
+    await idle();
+    await panel.locator("#mode-batch").click();
+    await idle();
+  };
+  const oldFailures = Array.from({ length: 46 }, (_, index) => ({ inputUrl: index ? `${ORIGIN}/b-game?row=${index}` : limitedUrl, status: "error", error: "XML 请求失败（HTTP 429）" }));
+  await restoreRows([...kept, ...oldFailures]);
+  assert.match(await panel.locator("#batch-progress").textContent(), /51 \/ 51 已处理 · 5 成功 · 46 失败/);
+  assert.equal(await panel.locator("#batch-retry").isVisible(), true);
+  alwaysLimited = true;
+  retryAfter = "60";
+  const beforeRetry = requests.length;
+  await panel.locator("#batch-retry").click();
+  await panel.waitForFunction(() => !document.getElementById("batch-wait").hidden && document.getElementById("batch-wait").textContent.includes("HTTP 429"));
+  assert.match(await panel.locator("#batch-wait").textContent(), /秒后自动重试/);
+  assert.equal(await panel.locator("#batch-retry").isDisabled(), true);
+  assert.deepEqual((await readState()).rows.slice(0, 5), kept);
+  assert.deepEqual(requests.slice(beforeRetry), [limitedUrl, `${ORIGIN}/feed.php?format=1&id=16`]);
+  await panel.setViewportSize({ width: 380, height: 900 });
+  await panel.screenshot({ path: join(output, "gamemonetize-rate-limit.png") });
+  await panel.setViewportSize({ width: 280, height: 800 });
+  assert.equal(await panel.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await panel.screenshot({ path: join(output, "gamemonetize-rate-limit-narrow.png") });
+  await panel.locator("#batch-stop").click();
+  await idle();
+  assert.match(await panel.locator("#batch-progress").textContent(), /5 \/ 51 已处理 · 5 成功 · 0 失败 · 46 未完成/);
+  assert.equal(await panel.locator("#batch-wait").isHidden(), true);
+  assert.equal(requests.length, beforeRetry + 2);
+
+  alwaysLimited = false;
+  limitReplies = 1;
+  retryAfter = "0";
+  holdPage = true;
+  await restoreRows([...kept, oldFailures[0], { inputUrl: `${ORIGIN}/hold-page-game`, status: "pending" }]);
+  const beforeRecovery = requests.length;
+  await panel.locator("#batch-retry").click();
+  await waitForHold();
+  await panel.locator("#batch-stop").click();
+  await idle();
+  release(); release = undefined; holdPage = false;
+  const recovered = (await readState()).rows;
+  assert.deepEqual(recovered.slice(0, 5), kept);
+  assert.equal(recovered[5].status, "success");
+  assert.equal(recovered[5].capture.gameId, "16");
+  assert.equal(recovered[5].capture.xml, xmlFor(16));
+  assert.equal(recovered[6].status, "pending");
+  assert.equal(requests.slice(beforeRecovery).filter(url => new URL(url).pathname === "/feed.php").length, 2);
+
+  alwaysLimited = true;
+  await restoreRows([...kept, { inputUrl: limitedUrl, status: "pending" }, { inputUrl: `${ORIGIN}/b-game?later`, status: "pending" }]);
+  const beforeExhaustion = requests.length;
+  await panel.locator("#batch-start").click();
+  await idle();
+  assert.match(await panel.locator('#status[data-error="true"]').textContent(), /HTTP 429.*批次已暂停/);
+  assert.deepEqual((await readState()).rows.slice(0, 5), kept);
+  assert.ok((await readState()).rows.slice(5).every(row => row.status === "pending"));
+  assert.equal(requests.slice(beforeExhaustion).filter(url => new URL(url).pathname === "/feed.php").length, 3);
+  assert.equal(requests.slice(beforeExhaustion).includes(`${ORIGIN}/b-game?later`), false);
+  assert.equal(await panel.locator("#batch-download").isEnabled(), true);
   await panel.evaluate(key => chrome.storage.local.set({ [key]: { input: "", rows: [{ inputUrl: "https://example.com", status: "success" }] } }), BATCH_STORAGE_KEY);
   await panel.reload();
   await idle();
   assert.match(await panel.locator('#status[data-error="true"]').textContent(), /无法恢复批量记录/);
   assert.equal(await panel.locator("#game-title").textContent(), single.title);
   assert.deepEqual(errors, []);
-  console.log("Batch browser checks passed: sequential fetch, deduplication, XML/mobile, partial ZIP, stop/resume of page and XML requests, persistence, validation, failures and isolation.");
+  console.log("Batch browser checks passed: collection/ZIP, deduplication, persistence, failure-only retry preserving five successes, HTTP 429 cooldown/stop/recovery/pause, isolation and narrow layout.");
 } finally { release?.(); await context.close(); }

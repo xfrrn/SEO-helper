@@ -14,21 +14,25 @@ function render() {
   document.getElementById("platform-count").textContent = `${visible.length} 个平台`;
   document.getElementById("no-results").hidden = visible.length > 0;
   for (const platform of visible) {
+    const card = element("article", "tool-card", "");
+    card.dataset.platform = platform.id;
+    const heading = element("div", "tool-heading", "");
+    const mark = element("span", "platform-mark", platform.name.slice(0, 1));
+    mark.setAttribute("aria-hidden", "true");
+    const details = element("div", "tool-details", "");
+    details.append(element("h3", "", platform.name));
+    if (platform.domain) details.append(element("p", "domain", platform.domain));
+    heading.append(mark, details);
+    card.append(heading);
+    if (platform.description) card.append(element("p", "description", platform.description));
     for (const feature of platform.features) {
-      const card = element("article", "tool-card", "");
-      const heading = element("div", "tool-heading", "");
-      const mark = element("span", "platform-mark", platform.name.slice(0, 1));
-      mark.setAttribute("aria-hidden", "true");
-      const details = element("div", "tool-details", "");
-      details.append(element("h3", "", `${platform.name} · ${feature.name}`));
-      if (platform.domain) details.append(element("p", "domain", platform.domain));
-      details.append(element("p", "description", feature.description));
-      heading.append(mark, details);
-      card.append(heading);
+      const section = element("section", "tool-feature", "");
+      section.append(element("h4", "", feature.name));
+      section.append(element("p", "description", feature.description));
       if (feature.capabilities?.length) {
         const capabilities = element("ul", "capabilities", "");
         for (const name of feature.capabilities) capabilities.append(element("li", "", name));
-        card.append(capabilities);
+        section.append(capabilities);
       }
       const link = element("a", "open-tool", `打开${feature.name}`);
       link.href = chrome.runtime.getURL(feature.page);
@@ -36,9 +40,10 @@ function render() {
       const arrow = element("span", "", "→");
       arrow.setAttribute("aria-hidden", "true");
       link.append(arrow);
-      card.append(link);
-      container.append(card);
+      section.append(link);
+      card.append(section);
     }
+    container.append(card);
   }
 }
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_URL, researchUrl, researchKey, keywordUrl, parseRoots, parseBatches, appendRootBatches, filterDescription, numericValue, normalizeRows, mergeCapture } from "../src/platforms/sem/keyword-magic/core.js";
-import { PRESET_ROOTS } from "../src/platforms/sem/keyword-magic/root-library.js";
+import { PRESET_ROOTS } from "../src/shared/root-library.js";
 import { collectTab } from "../src/platforms/sem/keyword-magic/collector.js";
 import { normalizeDownloadFolder, matchesNativeDownload, watchNativeDownload, exportNativeFile } from "../src/platforms/sem/keyword-magic/native-export.js";
 
