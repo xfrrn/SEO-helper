@@ -5,15 +5,15 @@ body { height: 100dvh; min-height: 0; overflow: hidden; }
 #feature-home { margin-left: auto; font-size: 12px; padding: 3px 5px; white-space: nowrap; }
 main { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
 button, .button { min-height: 30px; }
-input { width: 100%; min-width: 0; height: 36px; padding: 6px 8px; border: 1px solid #bdcac0; border-radius: 5px; font: inherit; color: #19252c; background: white; caret-color: #275f40; }
+input { width: 100%; min-width: 0; height: 36px; padding: 6px 8px; border: 1px solid var(--panel-input); border-radius: 5px; font: inherit; color: var(--panel-text); background: white; caret-color: var(--panel-accent); }
 #analysis-form { display: flex; flex-shrink: 0; gap: 6px; padding: 8px; }
 #analysis-form input { flex: 1; }
-#analyze { height: 36px; padding: 3px 10px; color: white; background: #275f40; border-color: #275f40; }
-#analyze:hover:not(:disabled) { background: #1f4d34; }
-.source-toolbar { display: flex; align-items: center; flex-shrink: 0; min-width: 0; gap: 6px; padding: 0 8px; border-bottom: 1px solid #dce2df; }
-#providers { display: flex; flex: 1; min-width: 0; gap: 12px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #bdcac0 transparent; }
-#providers button { flex-shrink: 0; border: 0; border-radius: 0; border-bottom: 3px solid transparent; padding: 7px 0 4px; background: transparent; white-space: nowrap; color: #536559; font-size: 13px; }
-#providers [aria-selected="true"] { border-bottom-color: #275f40; color: #275f40; font-weight: 600; }
+#analyze { height: 36px; padding: 3px 10px; color: white; background: var(--panel-accent); border-color: var(--panel-accent); }
+#analyze:hover:not(:disabled) { background: var(--panel-hover); }
+.source-toolbar { display: flex; align-items: center; flex-shrink: 0; min-width: 0; gap: 6px; padding: 0 8px; border-bottom: 1px solid var(--panel-line); }
+#providers { display: flex; flex: 1; min-width: 0; gap: 12px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: var(--panel-input) transparent; }
+#providers button { flex-shrink: 0; border: 0; border-radius: 0; border-bottom: 3px solid transparent; padding: 7px 0 4px; background: transparent; white-space: nowrap; color: var(--panel-muted); font-size: 13px; }
+#providers [aria-selected="true"] { border-bottom-color: var(--panel-accent); color: var(--panel-accent); font-weight: 600; }
 #providers button:focus-visible { outline-offset: -2px; }
 #result-toolbar { display: flex; flex-shrink: 0; gap: 4px; font-size: 12px; }
 #result-toolbar :is(button,.button) { padding: 3px 5px; white-space: nowrap; }
@@ -22,13 +22,13 @@ input { width: 100%; min-width: 0; height: 36px; padding: 6px 8px; border: 1px s
 #result-frame:empty { display: none; }
 iframe { display: block; width: 100%; height: 100%; min-height: 0; flex: 1; border: 0; background: white; }
 #external-result { padding: 16px; }
-#external-result p { margin: 8px 0 16px; color: #536559; }
+#external-result p { margin: 8px 0 16px; color: var(--panel-muted); }
 footer { flex-shrink: 0; padding: 6px 8px; max-height: 25vh; overflow: auto; }
-#page-settings > summary { cursor: pointer; color: #275f40; white-space: nowrap; }
-#settings-form { position: absolute; z-index: 2; top: 100%; left: 8px; right: 8px; padding: 12px; max-height: calc(100dvh - 52px); overflow-y: auto; background: white; border: 1px solid #bdcac0; border-radius: 5px; box-shadow: 0 4px 12px #0002; }
-#settings-form label { display: block; font-size: 14px; color: #536559; }
+#page-settings > summary { cursor: pointer; color: var(--panel-accent); white-space: nowrap; }
+#settings-form { position: absolute; z-index: 2; top: 100%; left: 8px; right: 8px; padding: 12px; max-height: calc(100dvh - 52px); overflow-y: auto; background: white; border: 1px solid var(--panel-input); border-radius: 5px; box-shadow: 0 4px 12px #0002; }
+#settings-form label { display: block; font-size: 12px; color: var(--panel-muted); }
 #settings-form > input { margin: 4px 0 10px; }
-#settings-form .hint { color: #536559; font-size: 12px; margin-bottom: 10px; }
+#settings-form .hint { color: var(--panel-muted); font-size: 12px; margin-bottom: 10px; }
 #settings-status { margin-top: 6px; font-size: 13px; }
-#settings-status[data-error="true"] { color: #a12f29; }
-::selection { color: #19252c; background: #e0ece3; }
+#settings-status[data-error="true"] { color: var(--panel-error); }
+::selection { color: var(--panel-text); background: var(--panel-selected); }

@@ -1,0 +1,31 @@
+/* Compact A: shared palette and browser affordances for every extension panel. */
+:root {
+  color-scheme: light;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  --panel-bg: #fff;
+  --panel-text: #212630;
+  --panel-muted: #626b78;
+  --panel-line: #e4e7ec;
+  --panel-input: #c8ced8;
+  --panel-surface: #f6f8fb;
+  --panel-accent: #245dc9;
+  --panel-hover: #194ba8;
+  --panel-selected: #eef4ff;
+  --panel-error: #a12f29;
+  color: var(--panel-text);
+  background: var(--panel-bg);
+  accent-color: var(--panel-accent);
+  caret-color: var(--panel-accent);
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-input) var(--panel-bg);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+::selection { color: var(--panel-text); background: #cbdcff; }
+:is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--panel-accent); outline-offset: 2px; }
+a { text-underline-offset: 3px; }
+button, input, select { min-height: 30px; }
+button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: no-preference) {
+  button, a { transition: background-color .12s ease-out, color .12s ease-out; }
+}

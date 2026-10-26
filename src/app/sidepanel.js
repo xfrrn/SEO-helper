@@ -24,24 +24,24 @@ function render() {
     if (platform.domain) details.append(element("p", "domain", platform.domain));
     heading.append(mark, details);
     card.append(heading);
-    if (platform.description) card.append(element("p", "description", platform.description));
     for (const feature of platform.features) {
-      const section = element("section", "tool-feature", "");
-      section.append(element("h4", "", feature.name));
-      section.append(element("p", "description", feature.description));
-      if (feature.capabilities?.length) {
-        const capabilities = element("ul", "capabilities", "");
-        for (const name of feature.capabilities) capabilities.append(element("li", "", name));
-        section.append(capabilities);
-      }
-      const link = element("a", "open-tool", `打开${feature.name}`);
+      const link = element("a", "open-tool", "");
       link.href = chrome.runtime.getURL(feature.page);
       link.setAttribute("aria-label", feature.name);
-      const arrow = element("span", "", "→");
+      link.title = feature.description;
+      const content = element("span", "tool-content", "");
+      content.append(element("strong", "", feature.name));
+      content.append(element("span", "capabilities", feature.capabilities?.join(" · ") || feature.description));
+      const arrow = element("span", "tool-arrow", "→");
       arrow.setAttribute("aria-hidden", "true");
-      link.append(arrow);
-      section.append(link);
-      card.append(section);
+      link.append(content, arrow);
+      card.append(link);
+    }
+    if (platform.description) {
+      const disclosure = element("details", "platform-description", "");
+      disclosure.append(element("summary", "", "使用说明与隐私"));
+      disclosure.append(element("p", "", platform.description));
+      card.append(disclosure);
     }
     container.append(card);
   }

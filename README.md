@@ -4,6 +4,18 @@ Chrome / Edge 侧边栏插件，按平台组织不同网页功能。目前支持
 
 v0.10.1 首页按平台显示一张卡片，Google Trends 的「分组对比」「词义分析」放在同一卡片内。SEM 与 SIM 初始词根库使用相同的 51 个词，但各自保存模板、词根编辑、批次和采集结果。
 
+## 紧凑界面（v0.14.0）
+
+采用已确认的 A「极简专业」紧凑版：白色背景、黑灰文字、蓝色操作态。首页使用平台分组与功能行，移除大型介绍卡片和未接入平台占位；搜索仍匹配完整平台和功能元数据，Google Trends 在线翻译的数据发送说明保留在「使用说明与隐私」中。功能说明可悬停入口查看。
+
+工具箱、Trends 分组对比 / 词义分析、SEM / SIM 词根研究和 GameMonetize 使用 `src/shared/panel-theme.css` 的同一套颜色与浏览器控件规范。默认正文 13px、标题 20px、页内横向留白 16px；保留键盘焦点、禁用态、错误信息、原生表单及全部现有操作。没有变更权限、采集协议或本地存储格式。
+
+新增 `npm run test:ui-browser`：沿用下文的 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE` 配置，在隔离扩展中检查全部 6 页在 280 / 380 / 560px 下的横向溢出、共享主题、工具入口可见性、搜索空态、隐私说明、键盘焦点和返回导航。截图仅保存在忽略目录 `output/compact-ui/`；不访问第三方账号。视觉规范见 [DESIGN.md](DESIGN.md)。
+
+2026-10-26 验证：`npm test` 47 项通过；`test:ui-browser`、`test:platforms-browser`、`test:trends-browser`、`test:analysis-browser`、`test:sim-browser`、`test:browser`、`test:gamemonetize-browser`、`test:gamemonetize-batch-browser` 共 8 组浏览器回归通过。Trends 分组词保留原有 ≥16px 断言，未降低现有测试要求。实际检查了各页截图，辅助文字 / 浅背景与蓝色按钮文字对比度均 ≥4.5:1。
+
+未通过项：`test:trends-actions-browser` 在第 159 行等待新标签导航超时；用修改前的 `5859b96` 隔离副本运行同一命令，也在相同行失败。诊断发现后台生成的比较 URL 正确，新标签实际进入 `chrome-error://chromewebdata/`，页面提示 `ERR_TUNNEL_CONNECTION_FAILED`，浏览器版本为本机 Chromium 1248。此轮未确认测试代理为何未拦截该扩展新建标签的初始请求，后续快捷操作断言不计为通过；未修改此测试或生产快捷操作代码。未进行第三方登录账号下的真实网站采集验收。
+
 ## GameMonetize 游戏采集（v0.12.2）
 
 1. 在扩展管理页刷新 SEO Helper，关闭并重新打开侧栏，在首页选择 **GameMonetize · 游戏采集**。

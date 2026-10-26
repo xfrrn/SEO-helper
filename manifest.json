@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SEO Helper",
   "description": "按平台组织的 SEO 网页工具，支持 SEM / SIM 词根研究、Google Trends 分组对比及词义分析、GameMonetize 游戏采集。",
-  "version": "0.13.3",
+  "version": "0.14.0",
   "minimum_chrome_version": "116",
   "permissions": ["sidePanel", "storage", "activeTab", "scripting"],
   "optional_permissions": ["downloads"],
